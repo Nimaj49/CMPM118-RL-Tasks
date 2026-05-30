@@ -211,6 +211,8 @@ class DQN_train:
 
         if done:
             self.episode += 1
+
+            print(f"Episode {self.episode}, Reward: {self.eps_reward:.2f}, Length: {self.eps_length}")
             self.writer.add_scalar("episode/reward", self.eps_reward, self.episode)
             self.writer.add_scalar("episode/length", self.eps_length, self.episode)
 
@@ -258,6 +260,14 @@ class DQN_train:
         self.optimizer.step()
 
         self.writer.add_scalar("train/loss", loss.item(), self.step_count)
+
+        if self.step_count % 1000 == 0:
+            print
+            (
+                f"Step: {self.step_count}, "
+                f"Loss: {loss.item():.4f}, "
+                f"Buffer: {len(self.replay_buffer)}"
+            )
     
     def update_target(self):
         if self.step_count % TARGET_UPDATE == 0:
