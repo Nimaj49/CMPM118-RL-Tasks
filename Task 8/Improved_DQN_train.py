@@ -20,16 +20,17 @@ from collections import deque
 # Parameters:
 TOTAL_STEPS = 300_000
 GAMMA = 0.99
-LR = 5e-5
+LR = 1e-4
 BATCH_SIZE = 32
 BUFFER_SIZE = 200_000
-TRAIN_START = 10_000
+TRAIN_START = 5_000
 LEARN_INCREMENT = 4
-TARGET_UPDATE = 5_000
+TARGET_UPDATE = 2_000
 EPS_START = 1.0
-EPS_END = 0.05
-EPS_DELAY_STEPS = 150_000
+EPS_END = 0.10
+EPS_DELAY_STEPS = 250_000
 SEED = 1
+REPEAT_ACTION = 4
 
 # Helper Functions:
 
@@ -166,9 +167,6 @@ class DQN_train:
         self.eps_length = 0
         self.last_loss = 0.0
 
-        run_name = time.strftime("double_dqn_nima_%Y%m%d_%H%M%S")
-        self.writer = SummaryWriter(log_dir=f"runs/{run_name}")
-
         run_name = time.strftime("dqn_nima_%Y%m%d_%H%M%S")
         self.writer = SummaryWriter(log_dir=f"runs/{run_name}")
 
@@ -200,15 +198,26 @@ class DQN_train:
 
         action, esp = self.choose_action()
 
-        obs_next, reward, term, trunc, _ = self.env.step(action)
-        done = term or trunc
+        total_reward = 0
+        done = False
+        obs_next = None
+
+        for _ in range(REPEAT_ACTION):
+            obs_next, reward, term, trunc, _ = self.env.step(action)
+            total_reward += reward
+            done = term or trunc
+
+            if done:
+                break
+
+        clipped_reward = np.clip(total_reward, -1.0, 1.0)
 
         next_state = self.frame_stacker.step(obs_next)
 
-        self.replay_buffer.add(self.state, action, reward, next_state, done)
+        self.replay_buffer.add(self.state, action, clipped_reward, next_state, done)
 
         self.state = next_state
-        self.eps_reward += reward
+        self.eps_reward += total_reward
         self.eps_length += 1
 
         self.writer.add_scalar("train/epsilon", esp, self.step_count)
@@ -219,7 +228,6 @@ class DQN_train:
             print(
                 f"Episode {self.episode}, "
                 f"Reward: {self.eps_reward:.2f}, "
-                f"Length: {self.eps_length}, "
                 f"Loss: {self.last_loss:.4f}"
             )
 
