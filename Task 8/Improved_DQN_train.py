@@ -2,7 +2,7 @@
 Name: Nima Jamshidi
 Professor Leilani Gilpin
 CMPM-118
-Task 8 (AIEA) Improved DQN
+Task 7 (AIEA)
 May 29th, 2026
 """
 
@@ -164,8 +164,10 @@ class DQN_train:
         self.episode = 0
         self.eps_reward = 0
         self.eps_length = 0
+        self.last_loss = 0.0
 
-        self.last_rewards = deque(maxlen=20)
+        run_name = time.strftime("double_dqn_nima_%Y%m%d_%H%M%S")
+        self.writer = SummaryWriter(log_dir=f"runs/{run_name}")
 
         run_name = time.strftime("dqn_nima_%Y%m%d_%H%M%S")
         self.writer = SummaryWriter(log_dir=f"runs/{run_name}")
@@ -214,20 +216,15 @@ class DQN_train:
         if done:
             self.episode += 1
 
-            self.last_rewards.append(self.eps_reward)
-            avg_reward = np.mean(self.last_rewards)
-
-            print
-            (
+            print(
                 f"Episode {self.episode}, "
                 f"Reward: {self.eps_reward:.2f}, "
-                f"Avg20: {avg_reward:.2f}, "
-                f"Length: {self.eps_length}"
+                f"Length: {self.eps_length}, "
+                f"Loss: {self.last_loss:.4f}"
             )
 
             self.writer.add_scalar("episode/reward", self.eps_reward, self.episode)
             self.writer.add_scalar("episode/length", self.eps_length, self.episode)
-            self.writer.add_scalar("episode/avg_reward_20", avg_reward, self.episode)
 
             obs, _ = self.env.reset()
             self.state = self.frame_stacker.reset(obs)
@@ -263,11 +260,11 @@ class DQN_train:
         with torch.no_grad():
             next_actions = self.q_network(next_states).argmax(dim=1)
             next_q_target = self.target_network(next_states)
-
             max_next_q = next_q_target.gather(1, next_actions.unsqueeze(1)).squeeze(1)
             target_q = rewards + GAMMA * (1 - dones) * max_next_q
 
         loss = nn.functional.smooth_l1_loss(chosen_q, target_q)
+        self.last_loss = loss.item()
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -275,13 +272,7 @@ class DQN_train:
         self.optimizer.step()
 
         self.writer.add_scalar("train/loss", loss.item(), self.step_count)
-
-        if self.step_count % 1000 == 0:
-            print(
-                f"Step: {self.step_count}, "
-                f"Loss: {loss.item():.4f}, "
-                f"Buffer: {len(self.replay_buffer)}"
-            )
+    
     def update_target(self):
         if self.step_count % TARGET_UPDATE == 0:
             self.target_network.load_state_dict(self.q_network.state_dict())
