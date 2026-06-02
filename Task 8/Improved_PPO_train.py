@@ -160,6 +160,7 @@ class PPO:
         self.device = torch.device("cpu")
 
         self.env = gym.make("CarRacing-v3", continuous=False, domain_randomize=False)
+        print("Action Space:", self.env.action_space)
         first_obs, info = self.env.reset(seed=SEED)
 
         self.number_of_actions = self.env.action_space.n

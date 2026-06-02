@@ -203,7 +203,7 @@ class DQN_train:
         obs_next = None
 
         for _ in range(REPEAT_ACTION):
-            obs_next, reward, term, trunc, _ = self.env.step(action)
+            obs_next, reward, term, trunc, _ = self.env.step(int(action))
             total_reward += reward
             done = term or trunc
 
@@ -214,8 +214,7 @@ class DQN_train:
 
         next_state = self.frame_stacker.step(obs_next)
 
-        self.replay_buffer.add(self.state, action, clipped_reward, next_state, done)
-
+        self.replay_buffer.add(self.state, int(action), clipped_reward, next_state, done)
         self.state = next_state
         self.eps_reward += total_reward
         self.eps_length += 1
